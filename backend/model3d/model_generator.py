@@ -7,6 +7,7 @@ def generate_3d_model(geometry_data):
     scale = geometry_data.get('scale_px_per_m', 100.0)
     openings = geometry_data.get('openings', [])
     windows = [o for o in openings if o.get('type') == 'Window']
+    door_openings = [o for o in openings if o.get('type') == 'Door']
     
     threejs_walls = []
     
@@ -75,8 +76,22 @@ def generate_3d_model(geometry_data):
             "windows": wall_windows
         })
         
+    # Convert door openings to model-space coordinates
+    doors_list = []
+    for door in door_openings:
+        dx_m = (door['x'] - center_x) / scale
+        dz_m = (door['y'] - center_z) / scale
+        span_m = door.get('span_px', 40) / scale
+        doors_list.append({
+            "x": round(dx_m, 3),
+            "z": round(dz_m, 3),
+            "width": round(max(0.7, span_m), 2),
+            "height": 2.1
+        })
+
     return {
         "walls": threejs_walls,
+        "doors": doors_list,
         "slab": {
             "width": round(slab_w + 0.4, 2), 
             "depth": round(slab_d + 0.4, 2),

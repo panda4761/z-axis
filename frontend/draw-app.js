@@ -339,7 +339,7 @@ async function analyzeFloorPlan() {
     switchMode('3d');
     
     setTimeout(() => {
-      buildThreeSceneWithModel(result.model);
+      buildThreeSceneWithModel(result.model, (result.geom && result.geom.openings) ? result.geom.openings : []);
       hideProcessing();
       showToast('3D Model Generated! 🏗️', 2000);
     }, 500);
@@ -376,7 +376,8 @@ let autoRotate = true, wireframe = false;
 const meshes = [];
 let threeControls;
 
-function buildThreeSceneWithModel(modelData) {
+function buildThreeSceneWithModel(modelData, openings) {
+  openings = openings || [];
   const container = document.getElementById('three-canvas');
   const W = container.parentElement.clientWidth;
   const H = container.parentElement.clientHeight;
@@ -469,6 +470,41 @@ function buildThreeSceneWithModel(modelData) {
     mesh.position.y = -s.thickness/2;
     mesh.receiveShadow = true;
     threeScene.add(mesh);
+  }
+
+  // Doors — amber panels placed at door openings
+  const modelDoors = modelData.doors || [];
+  if (modelDoors.length > 0) {
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, metalness: 0.2 });
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0xfbbf24 });
+    modelDoors.forEach(function(door) {
+      var nearestWall = modelData.walls[0];
+      var bestDist = Infinity;
+      modelData.walls.forEach(function(w) {
+        var mx = (w.x1 + w.x2) / 2;
+        var mz = (w.z1 + w.z2) / 2;
+        var d = Math.hypot(door.x - mx, door.z - mz);
+        if (d < bestDist) { bestDist = d; nearestWall = w; }
+      });
+      var angle = nearestWall
+        ? Math.atan2(nearestWall.z2 - nearestWall.z1, nearestWall.x2 - nearestWall.x1)
+        : 0;
+      var panelGeo = new THREE.BoxGeometry(door.width, door.height, 0.05);
+      var panel = new THREE.Mesh(panelGeo, doorMat);
+      panel.position.set(door.x, door.height / 2, door.z);
+      panel.rotation.y = -angle;
+      panel.castShadow = true;
+      panel.userData = { type: 'door' };
+      var edges = new THREE.EdgesGeometry(panelGeo);
+      panel.add(new THREE.LineSegments(edges, edgeMat));
+      var frameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(door.width + 0.1, door.height + 0.1, 0.07));
+      var frame = new THREE.LineSegments(frameGeo, new THREE.LineBasicMaterial({ color: 0x92400e }));
+      frame.position.set(door.x, door.height / 2, door.z);
+      frame.rotation.y = -angle;
+      threeScene.add(frame);
+      threeScene.add(panel);
+      meshes.push(panel);
+    });
   }
 
   animate3D();

@@ -489,6 +489,11 @@ function buildThreeSceneWithModel(modelData, openings) {
       var angle = nearestWall
         ? Math.atan2(nearestWall.z2 - nearestWall.z1, nearestWall.x2 - nearestWall.x1)
         : 0;
+      var wallHeight = (nearestWall && nearestWall.height) ? nearestWall.height : 3.0;
+      var wallThickness = (nearestWall && nearestWall.thickness) ? nearestWall.thickness : 0.23;
+      var wallColor = nearestWall ? (nearestWall.type === 'LOAD_BEARING' ? 0xef4444 : 0x9ca3af) : 0x9ca3af;
+
+      // Door panel
       var panelGeo = new THREE.BoxGeometry(door.width, door.height, 0.05);
       var panel = new THREE.Mesh(panelGeo, doorMat);
       panel.position.set(door.x, door.height / 2, door.z);
@@ -504,6 +509,22 @@ function buildThreeSceneWithModel(modelData, openings) {
       threeScene.add(frame);
       threeScene.add(panel);
       meshes.push(panel);
+
+      // Transom wall above the door — fills gap to full wall height
+      var transomH = wallHeight - door.height;
+      if (transomH > 0.01) {
+        var transomGeo = new THREE.BoxGeometry(door.width, transomH, wallThickness);
+        var transomMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.6 });
+        var transom = new THREE.Mesh(transomGeo, transomMat);
+        transom.position.set(door.x, door.height + transomH / 2, door.z);
+        transom.rotation.y = -angle;
+        transom.castShadow = true;
+        transom.receiveShadow = true;
+        var transomEdges = new THREE.EdgesGeometry(transomGeo);
+        transom.add(new THREE.LineSegments(transomEdges, new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true })));
+        threeScene.add(transom);
+        meshes.push(transom);
+      }
     });
   }
 

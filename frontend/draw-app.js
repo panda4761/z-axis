@@ -316,7 +316,7 @@ async function analyzeFloorPlan() {
       scale_px_per_m: state.snapGrid / scale
     };
 
-    setStage('ps-parse', 'ps-parse-sub', 'Processing structural geometry...', 30);
+    setStage('ps-parse', 'proc-build-sub', 'Processing structural geometry...', 30);
     
     const response = await fetch(`${BACKEND}/pipeline-draw`, {
       method: 'POST',
@@ -333,15 +333,21 @@ async function analyzeFloorPlan() {
       explanations: result.explanations
     };
     
-    setStage('ps-detect', 'ps-detect-sub', 'Analyzing structural integrity...', 70);
+    setStage('ps-build', 'proc-build-sub', 'Building 3D model...', 70);
     
     enableTabs();
     switchMode('3d');
     
     setTimeout(() => {
-      buildThreeSceneWithModel(result.model, (result.geom && result.geom.openings) ? result.geom.openings : []);
-      hideProcessing();
-      showToast('3D Model Generated! 🏗️', 2000);
+      try {
+        buildThreeSceneWithModel(result.model, (result.geom && result.geom.openings) ? result.geom.openings : []);
+        showToast('3D Model Generated!', 2000);
+      } catch(e) {
+        console.error('3D build error:', e);
+        showToast('3D render error: ' + e.message, 5000);
+      } finally {
+        hideProcessing();
+      }
     }, 500);
     
     generateMaterialReportSync(result);
@@ -478,7 +484,7 @@ function buildThreeSceneWithModel(modelData, openings) {
     const doorMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, metalness: 0.2 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0xfbbf24 });
     modelDoors.forEach(function(door) {
-      var nearestWall = modelData.walls[0];
+      var nearestWall = (modelData.walls && modelData.walls.length > 0) ? modelData.walls[0] : null;
       var bestDist = Infinity;
       modelData.walls.forEach(function(w) {
         var mx = (w.x1 + w.x2) / 2;
@@ -599,10 +605,13 @@ function showToast(m, d=3000) {
 function showProcessing() { document.getElementById('processing-overlay').classList.remove('hidden'); }
 function hideProcessing() { document.getElementById('processing-overlay').classList.add('hidden'); }
 async function setStage(st, sub, msg, pct) {
-  document.getElementById(sub).textContent = msg;
-  document.getElementById('proc-bar').style.width = pct + '%';
+  var subEl = document.getElementById(sub);
+  if (subEl) subEl.textContent = msg;
+  var barEl = document.getElementById('proc-bar');
+  if (barEl) barEl.style.width = pct + '%';
   document.querySelectorAll('.pstage').forEach(s => s.classList.remove('active'));
-  document.getElementById(st).classList.add('active');
+  var stEl = document.getElementById(st);
+  if (stEl) stEl.classList.add('active');
   await new Promise(r => setTimeout(r, 400));
 }
 function enableTabs() {

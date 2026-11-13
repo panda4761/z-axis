@@ -60,8 +60,21 @@ function switchMode(m) {
   if (tab) tab.classList.add('active');
   if (panel) panel.classList.add('active');
 
-  if (m === '3d' && state.threeScene) {
-    setTimeout(() => state.threeScene.handleResize(), 100);
+  if (m === '3d') {
+    updateStats();
+    setTimeout(handleThreeResize, 100);
+  }
+}
+
+function handleThreeResize() {
+  const container = document.getElementById('three-canvas');
+  if (!container || !threeRenderer || !threeCamera) return;
+  const W = container.parentElement.clientWidth;
+  const H = container.parentElement.clientHeight;
+  if (W > 0 && H > 0) {
+    threeCamera.aspect = W / H;
+    threeCamera.updateProjectionMatrix();
+    threeRenderer.setSize(W, H);
   }
 }
 
@@ -89,6 +102,7 @@ function initCanvas() {
   ctx = canvas.getContext('2d');
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', handleThreeResize);
   canvas.addEventListener('mousedown', onCanvasMouseDown);
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseup', onCanvasMouseUp);
@@ -275,9 +289,20 @@ function updateStats() {
   const walls = state.walls.filter(s => s.type === 'wall').length;
   const wins = state.walls.filter(s => s.type === 'window').length;
   const doors = state.walls.filter(s => s.type === 'door').length;
-  document.getElementById('d-walls').textContent = walls;
-  document.getElementById('d-windows').textContent = wins;
-  document.getElementById('d-doors').textContent = doors;
+
+  const dWalls = document.getElementById('d-walls');
+  const dWins = document.getElementById('d-windows');
+  const dDoors = document.getElementById('d-doors');
+  if (dWalls) dWalls.textContent = walls;
+  if (dWins) dWins.textContent = wins;
+  if (dDoors) dDoors.textContent = doors;
+
+  const s3Walls = document.getElementById('s3-walls');
+  const s3Wins = document.getElementById('s3-windows');
+  const s3Doors = document.getElementById('s3-doors');
+  if (s3Walls) s3Walls.textContent = walls;
+  if (s3Wins) s3Wins.textContent = wins;
+  if (s3Doors) s3Doors.textContent = doors;
 }
 
 /* ═══════════════════════════════════════════
@@ -390,6 +415,24 @@ function buildThreeSceneWithModel(modelData, openings) {
   const container = document.getElementById('three-canvas');
   const W = container.parentElement.clientWidth || 800;
   const H = container.parentElement.clientHeight || 500;
+
+  // Update 3D Sidebar Structural Elements Counts
+  const wallsCount = (modelData && Array.isArray(modelData.walls))
+    ? modelData.walls.length
+    : state.walls.filter(s => s.type === 'wall').length;
+  const winsCount = (Array.isArray(openings) && openings.length > 0)
+    ? openings.filter(o => o.type === 'Window').length
+    : state.walls.filter(s => s.type === 'window').length;
+  const doorsCount = (Array.isArray(openings) && openings.length > 0)
+    ? openings.filter(o => o.type === 'Door').length
+    : state.walls.filter(s => s.type === 'door').length;
+
+  const s3Walls = document.getElementById('s3-walls');
+  const s3Wins = document.getElementById('s3-windows');
+  const s3Doors = document.getElementById('s3-doors');
+  if (s3Walls) s3Walls.textContent = wallsCount;
+  if (s3Wins) s3Wins.textContent = winsCount;
+  if (s3Doors) s3Doors.textContent = doorsCount;
 
   if (threeAnimFrameId) {
     cancelAnimationFrame(threeAnimFrameId);

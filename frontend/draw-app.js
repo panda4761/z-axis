@@ -381,12 +381,18 @@ let threeRenderer, threeScene, threeCamera;
 let autoRotate = true, wireframe = false;
 const meshes = [];
 let threeControls;
+let threeAnimFrameId = null;
 
 function buildThreeSceneWithModel(modelData, openings) {
   openings = openings || [];
   const container = document.getElementById('three-canvas');
-  const W = container.parentElement.clientWidth;
-  const H = container.parentElement.clientHeight;
+  const W = container.parentElement.clientWidth || 800;
+  const H = container.parentElement.clientHeight || 500;
+
+  if (threeAnimFrameId) {
+    cancelAnimationFrame(threeAnimFrameId);
+    threeAnimFrameId = null;
+  }
 
   if (threeRenderer) {
     threeScene.traverse(obj => { 
@@ -538,12 +544,14 @@ function buildThreeSceneWithModel(modelData, openings) {
 }
 
 function animate3D() {
-  requestAnimationFrame(animate3D);
-  if (threeControls) {
-    threeControls.autoRotate = autoRotate;
-    threeControls.update();
+  threeAnimFrameId = requestAnimationFrame(animate3D);
+  if (state.mode === '3d' && threeRenderer && threeScene && threeCamera) {
+    if (threeControls) {
+      threeControls.autoRotate = autoRotate;
+      threeControls.update();
+    }
+    threeRenderer.render(threeScene, threeCamera);
   }
-  if (threeRenderer) threeRenderer.render(threeScene, threeCamera);
 }
 
 function toggleAutoRotate() {

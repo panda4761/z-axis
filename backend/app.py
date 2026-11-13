@@ -60,6 +60,16 @@ def parse():
         temp_fd, temp_path = tempfile.mkstemp(suffix=".png")
         os.close(temp_fd)
         file.save(temp_path)
+
+        # Guard against oversized images causing CPU lockups
+        in_img = cv2.imread(temp_path)
+        if in_img is not None:
+            ih, iw = in_img.shape[:2]
+            max_dim = 1400
+            if max(ih, iw) > max_dim:
+                scale_factor = max_dim / float(max(ih, iw))
+                resized = cv2.resize(in_img, (int(iw * scale_factor), int(ih * scale_factor)), interpolation=cv2.INTER_AREA)
+                cv2.imwrite(temp_path, resized)
         
         try:
             parsed_data = parse_floor_plan(temp_path)
@@ -124,6 +134,16 @@ def pipeline_endpoint():
         temp_fd, temp_path = tempfile.mkstemp(suffix=".png")
         os.close(temp_fd)
         file.save(temp_path)
+
+        # Guard against oversized images causing CPU lockups
+        in_img = cv2.imread(temp_path)
+        if in_img is not None:
+            ih, iw = in_img.shape[:2]
+            max_dim = 1400
+            if max(ih, iw) > max_dim:
+                scale_factor = max_dim / float(max(ih, iw))
+                resized = cv2.resize(in_img, (int(iw * scale_factor), int(ih * scale_factor)), interpolation=cv2.INTER_AREA)
+                cv2.imwrite(temp_path, resized)
         
         # 1. Parse Image
         try:
